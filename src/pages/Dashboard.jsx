@@ -1,20 +1,13 @@
-
 import React, { useState, useEffect } from "react";
-import { UserProfile } from "@/api/entities";
-import { Transaction } from "@/api/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Send, 
-  QrCode, 
-  TrendingUp,
+import {
+  ArrowUpRight,
+  ArrowDownLeft,
   Wallet,
   CreditCard,
-  Globe
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -22,15 +15,23 @@ import { LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 export default function Dashboard() {
   const [userProfile, setUserProfile] = useState(null);
-  const [recentTransactions, setRecentTransactions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [solBalance, setSolBalance] = useState(null);
 
   const { connection } = useConnection();
   const { publicKey } = useWallet();
 
   useEffect(() => {
-    loadDashboardData();
+    // Replace remote fetch with local dummy data
+    const dummyUser = {
+      username: "syedhassan",
+      is_verified: true,
+      wallet_provider: "Phantom",
+      total_received: 1450.75,
+      total_sent: 1200.25,
+      credit_limit: 500,
+      credit_used: 100,
+    };
+    setUserProfile(dummyUser);
   }, []);
 
   useEffect(() => {
@@ -40,21 +41,6 @@ export default function Dashboard() {
       });
     }
   }, [publicKey, connection]);
-
-  const loadDashboardData = async () => {
-    setIsLoading(true);
-    try {
-      const profiles = await UserProfile.list();
-      const currentProfile = profiles[0];
-      setUserProfile(currentProfile);
-
-      const transactions = await Transaction.list("-created_date", 5);
-      setRecentTransactions(transactions);
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
-    }
-    setIsLoading(false);
-  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
@@ -71,10 +57,10 @@ export default function Dashboard() {
               </p>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  {userProfile?.is_verified ? 'Verified' : 'Pending Verification'}
+                  {userProfile?.is_verified ? "Verified" : "Pending Verification"}
                 </Badge>
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  {userProfile?.wallet_provider || 'Phantom'} Connected
+                  {userProfile?.wallet_provider || "Phantom"} Connected
                 </Badge>
                 {solBalance !== null && (
                   <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
@@ -117,7 +103,7 @@ export default function Dashboard() {
                       <span className="text-sm font-medium text-green-800">Received</span>
                     </div>
                     <div className="text-2xl font-bold text-green-700">
-                      ${userProfile?.total_received?.toFixed(2) || '0.00'}
+                      ${userProfile?.total_received?.toFixed(2) || "0.00"}
                     </div>
                   </div>
                   <div className="bg-blue-50 rounded-xl p-4">
@@ -126,7 +112,7 @@ export default function Dashboard() {
                       <span className="text-sm font-medium text-blue-800">Sent</span>
                     </div>
                     <div className="text-2xl font-bold text-blue-700">
-                      ${userProfile?.total_sent?.toFixed(2) || '0.00'}
+                      ${userProfile?.total_sent?.toFixed(2) || "0.00"}
                     </div>
                   </div>
                 </div>
@@ -147,11 +133,15 @@ export default function Dashboard() {
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-600">Available Credit</span>
                   <span className="font-semibold text-green-600">
-                    ${((userProfile?.credit_limit || 500) - (userProfile?.credit_used || 0)).toFixed(2)}
+                    $
+                    {(
+                      (userProfile?.credit_limit || 500) -
+                      (userProfile?.credit_used || 0)
+                    ).toFixed(2)}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
+                  <div
                     className="bg-gradient-to-r from-green-400 to-emerald-500 h-2 rounded-full transition-all duration-300"
                     style={{ width: "80%" }}
                   />
@@ -169,4 +159,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
 

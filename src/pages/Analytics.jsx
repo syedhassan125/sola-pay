@@ -1,57 +1,35 @@
-
-import React, { useState, useEffect } from "react";
-import { UserProfile } from "@/api/entities";
-import { Transaction } from "@/api/entities";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, Users, DollarSign, TrendingUp, Globe, Activity } from "lucide-react";
 
 export default function AnalyticsPage() {
-  const [analytics, setAnalytics] = useState({
-    totalUsers: 0,
-    activeUsers: 0,
-    totalVolume: 0,
-    totalTransactions: 0,
-    averageTransaction: 0,
-    recentUsers: []
-  });
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadAnalytics();
-  }, []);
-
-  const loadAnalytics = async () => {
-    setIsLoading(true);
-    try {
-      const users = await UserProfile.list();
-      const transactions = await Transaction.list();
-
-      const totalVolume = transactions.reduce((sum, tx) => sum + tx.amount, 0);
-      const averageTransaction = transactions.length ? totalVolume / transactions.length : 0;
-      const activeUsers = users.filter(user => user.transaction_count > 0).length;
-
-      setAnalytics({
-        totalUsers: users.length,
-        activeUsers,
-        totalVolume,
-        totalTransactions: transactions.length,
-        averageTransaction,
-        recentUsers: users.slice(0, 5)
-      });
-    } catch (error) {
-      console.error("Error loading analytics:", error);
-    }
-    setIsLoading(false);
+  const analytics = {
+    totalUsers: 1200,
+    activeUsers: 420,
+    totalVolume: 85000,
+    averageTransaction: 71.5,
+    recentUsers: [
+      {
+        id: 1,
+        username: "junaid",
+        is_verified: true,
+        country: "Pakistan",
+        profession: "Developer",
+        transaction_count: 12,
+        total_received: 1400,
+      },
+      {
+        id: 2,
+        username: "fatima",
+        is_verified: false,
+        country: "UAE",
+        profession: "Designer",
+        transaction_count: 5,
+        total_received: 500,
+      },
+    ]
   };
-
-  if (isLoading) {
-    return (
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center py-8">Loading analytics...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
@@ -186,7 +164,7 @@ export default function AnalyticsPage() {
               {["Pakistan", "Bangladesh", "Nigeria", "UAE"].map((country) => {
                 const userCount = analytics.recentUsers.filter(u => u.country === country).length;
                 const percentage = analytics.totalUsers ? (userCount / analytics.totalUsers * 100) : 0;
-                
+
                 return (
                   <div key={country} className="flex items-center justify-between">
                     <span className="text-gray-700">{country}</span>
@@ -218,9 +196,8 @@ export default function AnalyticsPage() {
           <CardContent>
             <div className="space-y-3">
               {["freelance", "family", "rent", "business"].map((category) => {
-                // This would be calculated from actual transaction data
-                const percentage = Math.random() * 40 + 10; // Simulated for demo
-                
+                const percentage = Math.random() * 40 + 10;
+
                 return (
                   <div key={category} className="flex items-center justify-between">
                     <span className="text-gray-700 capitalize">{category}</span>
@@ -245,3 +222,4 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+

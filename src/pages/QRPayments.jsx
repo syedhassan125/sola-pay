@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect } from "react";
-import { UserProfile } from "@/api/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +6,28 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { QrCode, Camera, DollarSign, Share2, Copy, CheckCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// ✅ Mock UserProfile object to simulate API
+const UserProfile = {
+  list: async () => {
+    return [
+      {
+        id: 1,
+        username: "demo_user",
+        is_verified: true,
+        country: "Pakistan",
+        phone_number: "+92XXXXXXXXX",
+        profession: "Developer",
+        wallet_provider: "phantom",
+        wallet_address: "FJd7F82Jx29JHds2Jf82hFJ83jf8DJf7",
+        total_received: 120.5,
+        total_sent: 80.75,
+        transaction_count: 15,
+        reputation_score: 92
+      }
+    ];
+  }
+};
 
 export default function QRPayments() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -30,14 +50,14 @@ export default function QRPayments() {
 
   const generateQR = () => {
     if (!requestAmount || !currentUser) return;
-    
+
     const paymentData = {
       recipient: currentUser.username,
       amount: parseFloat(requestAmount),
       wallet: currentUser.wallet_address,
       timestamp: Date.now()
     };
-    
+
     setQrData(paymentData);
   };
 
@@ -83,8 +103,8 @@ export default function QRPayments() {
                     className="text-lg"
                   />
                 </div>
-                
-                <Button 
+
+                <Button
                   onClick={generateQR}
                   disabled={!requestAmount || !currentUser}
                   className="w-full bg-gradient-to-r from-indigo-600 to-purple-600"
@@ -153,3 +173,4 @@ export default function QRPayments() {
     </div>
   );
 }
+

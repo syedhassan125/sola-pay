@@ -72,7 +72,7 @@ const AppLayout = ({ children, currentPageName }) => {
       <div className="lg:hidden glass-morphism sticky top-0 z-50 px-4 py-3">
         <div className="flex items-center justify-between">
           <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3">
-            <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/944285d9c_ChatGPTImageJul20202504_56_34PM.png" alt="SolaPay Logo" className="h-16" />
+      
           </Link>
           <Button
             variant="ghost"
@@ -127,7 +127,7 @@ const AppLayout = ({ children, currentPageName }) => {
           <div className="glass-morphism m-4 rounded-2xl premium-shadow flex-1 flex flex-col">
             <div className="p-6 border-b border-white/20">
               <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3">
-                <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/944285d9c_ChatGPTImageJul20202504_56_34PM.png" alt="SolaPay Logo" className="h-24" />
+            
               </Link>
             </div>
 

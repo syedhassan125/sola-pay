@@ -1,7 +1,4 @@
-
 import React, { useState, useEffect } from "react";
-import { UserProfile } from "@/api/entities";
-import { Transaction } from "@/api/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,30 +12,48 @@ export default function PayLaterPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadData();
+    // Mocked data instead of API
+    const demoUser = {
+      username: "demo_user",
+      credit_limit: 1000,
+      credit_used: 300,
+      reputation_score: 95,
+    };
+
+    const demoTransactions = [
+      {
+        id: 1,
+        receiver_username: "johndoe",
+        amount: 120.5,
+        due_date: "2025-08-10",
+        is_pay_later: true,
+        metadata: {
+          category: "Utilities",
+          description: "Electricity bill payment",
+        },
+      },
+      {
+        id: 2,
+        receiver_username: "techstore",
+        amount: 180,
+        due_date: "2025-08-15",
+        is_pay_later: true,
+        metadata: {
+          category: "Gadgets",
+          description: "Wireless headphones",
+        },
+      },
+    ];
+
+    setCurrentUser(demoUser);
+    setPayLaterTransactions(demoTransactions);
+    setIsLoading(false);
   }, []);
 
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const profiles = await UserProfile.list();
-      const currentProfile = profiles[0];
-      setCurrentUser(currentProfile);
-
-      const transactions = await Transaction.list("-created_date");
-      const payLaterTxs = transactions.filter(tx => 
-        tx.is_pay_later && tx.sender_username === currentProfile?.username
-      );
-      setPayLaterTransactions(payLaterTxs);
-    } catch (error) {
-      console.error("Error loading data:", error);
-    }
-    setIsLoading(false);
-  };
-
   const availableCredit = (currentUser?.credit_limit || 0) - (currentUser?.credit_used || 0);
-  const creditUtilization = currentUser?.credit_limit ? 
-    ((currentUser.credit_used || 0) / currentUser.credit_limit) * 100 : 0;
+  const creditUtilization = currentUser?.credit_limit
+    ? ((currentUser.credit_used || 0) / currentUser.credit_limit) * 100
+    : 0;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -163,7 +178,7 @@ export default function PayLaterPage() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="text-right">
                     <div className="font-semibold text-lg text-purple-600">
                       ${transaction.amount.toFixed(2)}

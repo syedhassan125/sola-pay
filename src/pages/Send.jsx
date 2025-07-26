@@ -1,15 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { UserProfile } from "@/api/entities";
-import { Transaction } from "@/api/entities";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Send, User, DollarSign, CreditCard, Wallet, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
@@ -19,7 +12,14 @@ import PaymentMethodSelector from "../components/send/PaymentMethodSelector";
 import TransactionPreview from "../components/send/TransactionPreview";
 
 export default function SendPage() {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser] = useState({
+    id: 1,
+    username: "you",
+    wallet_address: "fake_wallet_address",
+    total_sent: 200,
+    transaction_count: 5,
+    credit_used: 0,
+  });
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     recipient: null,
@@ -34,19 +34,6 @@ export default function SendPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-
-  useEffect(() => {
-    loadCurrentUser();
-  }, []);
-
-  const loadCurrentUser = async () => {
-    try {
-      const profiles = await UserProfile.list();
-      setCurrentUser(profiles[0]); // Simulated current user
-    } catch (error) {
-      console.error("Error loading user:", error);
-    }
-  };
 
   const handleNext = () => {
     setError(null);
@@ -69,49 +56,12 @@ export default function SendPage() {
   const handleSendMoney = async () => {
     setIsLoading(true);
     setError(null);
-
     try {
-      // Simulate transaction processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Create transaction record
-      const transactionData = {
-        sender_username: currentUser?.username,
-        receiver_username: formData.recipient.username,
-        sender_wallet: currentUser?.wallet_address,
-        receiver_wallet: formData.recipient.wallet_address,
-        amount: parseFloat(formData.amount),
-        fee: parseFloat(formData.amount) * 0.001, // 0.1% fee
-        status: formData.paymentMethod === "pay_later" ? "pay_later" : "completed",
-        metadata: formData.metadata,
-        is_pay_later: formData.paymentMethod === "pay_later",
-        payment_method: formData.paymentMethod,
-        transaction_id: `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      };
-
-      if (formData.paymentMethod === "pay_later") {
-        transactionData.due_date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 30 days from now
-      }
-
-      await Transaction.create(transactionData);
-
-      // Update user profiles (simplified)
-      if (currentUser) {
-        await UserProfile.update(currentUser.id, {
-          total_sent: (currentUser.total_sent || 0) + parseFloat(formData.amount),
-          transaction_count: (currentUser.transaction_count || 0) + 1,
-          credit_used: formData.paymentMethod === "pay_later" ? 
-            (currentUser.credit_used || 0) + parseFloat(formData.amount) : 
-            currentUser.credit_used
-        });
-      }
-
+      await new Promise(resolve => setTimeout(resolve, 1500));
       setSuccess(true);
     } catch (error) {
       setError("Failed to send payment. Please try again.");
-      console.error("Error sending money:", error);
     }
-
     setIsLoading(false);
   };
 
@@ -181,7 +131,6 @@ export default function SendPage() {
         </Alert>
       )}
 
-      {/* Progress Indicator */}
       <div className="flex items-center justify-center mb-8">
         <div className="flex items-center space-x-4">
           {[1, 2, 3, 4].map((stepNumber) => (
@@ -203,7 +152,6 @@ export default function SendPage() {
         </div>
       </div>
 
-      {/* Step Content */}
       <div className="space-y-6">
         {step === 1 && (
           <RecipientSearch 
@@ -237,7 +185,6 @@ export default function SendPage() {
           />
         )}
 
-        {/* Navigation Buttons */}
         <div className="flex justify-between">
           <Button 
             variant="outline" 
