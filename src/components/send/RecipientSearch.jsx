@@ -1,11 +1,7 @@
-
 import React, { useState, useEffect } from "react";
-import { UserProfile } from "@/api/entities";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Search, User, MapPin, Briefcase, CheckCircle } from "lucide-react";
+import { User, Search, MapPin, Briefcase, CheckCircle } from "lucide-react";
 
 export default function RecipientSearch({ onRecipientSelect, selectedRecipient }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -13,8 +9,35 @@ export default function RecipientSearch({ onRecipientSelect, selectedRecipient }
   const [recentRecipients, setRecentRecipients] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  const mockUsers = [
+    {
+      id: 2,
+      username: "jane_doe",
+      email: "jane@example.com",
+      country: "USA",
+      profession: "Engineer",
+      is_verified: true,
+    },
+    {
+      id: 3,
+      username: "mohamed123",
+      email: "mo@example.com",
+      country: "Egypt",
+      profession: "Designer",
+      is_verified: false,
+    },
+    {
+      id: 4,
+      username: "sarahk",
+      email: "sarah@site.com",
+      country: "UK",
+      profession: "Developer",
+      is_verified: true,
+    }
+  ];
+
   useEffect(() => {
-    loadRecentRecipients();
+    setRecentRecipients(mockUsers.slice(0, 2));
   }, []);
 
   useEffect(() => {
@@ -25,27 +48,13 @@ export default function RecipientSearch({ onRecipientSelect, selectedRecipient }
     }
   }, [searchTerm]);
 
-  const loadRecentRecipients = async () => {
-    try {
-      const profiles = await UserProfile.list();
-      setRecentRecipients(profiles.slice(1, 4)); // Simulate recent recipients
-    } catch (error) {
-      console.error("Error loading recent recipients:", error);
-    }
-  };
-
-  const searchUsers = async () => {
+  const searchUsers = () => {
     setIsSearching(true);
-    try {
-      const profiles = await UserProfile.list();
-      const filtered = profiles.filter(profile => 
-        profile.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        profile.email?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setSearchResults(filtered);
-    } catch (error) {
-      console.error("Error searching users:", error);
-    }
+    const filtered = mockUsers.filter(user =>
+      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setSearchResults(filtered);
     setIsSearching(false);
   };
 
@@ -178,3 +187,4 @@ export default function RecipientSearch({ onRecipientSelect, selectedRecipient }
     </Card>
   );
 }
+
