@@ -19,6 +19,8 @@ import {
   Calendar,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { api } from "@/lib/api";
 
 export default function HistoryPage() {
   const [transactions, setTransactions] = useState([]);
@@ -27,42 +29,60 @@ export default function HistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const { publicKey } = useWallet();
 
   useEffect(() => {
-    // Load dummy data
-    const dummyData = [
-      {
-        id: "1",
-        sender_username: "alice",
-        receiver_username: "you",
-        status: "completed",
-        amount: 150,
-        fee: 0.5,
-        metadata: {
-          description: "Freelance project",
-          category: "freelance",
-        },
-        created_date: new Date(),
-      },
-      {
-        id: "2",
-        sender_username: "you",
-        receiver_username: "bob",
-        status: "pending",
-        amount: 200,
-        fee: 0.25,
-        metadata: {
-          description: "Business deal",
-          category: "business",
-        },
-        created_date: new Date(),
-      },
-    ];
+    loadTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicKey]);
 
-    setTransactions(dummyData);
-    setFilteredTransactions(dummyData);
-    setIsLoading(false);
-  }, []);
+  const loadTransactions = async () => {
+    setIsLoading(true);
+    try {
+      if (publicKey) {
+        const rows = await api.getTransactions(publicKey.toBase58());
+        const mapped = (rows || []).map((r) => ({
+          id: String(r.id || r.signature || Math.random()),
+          sender_username: truncateKey(r.user_pubkey),
+          receiver_username: truncateKey(r.recipient_pubkey),
+          status: r.status || "completed",
+          amount: Number(r.amount_sol || 0),
+          fee: 0,
+          metadata: r.metadata || {},
+          created_date: r.created_at || new Date().toISOString(),
+        }));
+        setTransactions(mapped);
+        setFilteredTransactions(mapped);
+      } else {
+        // Fallback to dummy data
+        const dummyData = [
+          {
+            id: "1",
+            sender_username: "alice",
+            receiver_username: "you",
+            status: "completed",
+            amount: 0.1,
+            fee: 0.000005,
+            metadata: {
+              description: "Freelance project",
+              category: "freelance",
+            },
+            created_date: new Date(),
+          },
+        ];
+        setTransactions(dummyData);
+        setFilteredTransactions(dummyData);
+      }
+    } catch (e) {
+      console.warn("Failed to load transactions", e?.message || e);
+      setTransactions([]);
+      setFilteredTransactions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const truncateKey = (k) => (typeof k === "string" && k.length > 10 ? `${k.slice(0, 4)}...${k.slice(-4)}` : k || "");
 
   useEffect(() => {
     filterTransactions();
@@ -92,10 +112,12 @@ export default function HistoryPage() {
   };
 
   const getTransactionType = (tx) =>
-    tx.receiver_username === "you" ? "received" : "sent";
+    publicKey && tx.receiver_username.includes("...")
+      ? (tx.receiver_username.includes(truncateKey(publicKey.toBase58())) ? "received" : "sent")
+      : tx.receiver_username === "you" ? "received" : "sent";
 
   const getOtherUser = (tx) =>
-    tx.receiver_username === "you" ? tx.sender_username : tx.receiver_username;
+    getTransactionType(tx) === "received" ? tx.sender_username : tx.receiver_username;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -257,11 +279,11 @@ export default function HistoryPage() {
                             : "text-blue-600"
                         }`}
                       >
-                        {type === "received" ? "+" : "-"}$
-                        {(tx.amount || 0).toFixed(2)}
+                        {type === "received" ? "+" : "-"}
+                        {Number(tx.amount || 0).toFixed(4)} SOL
                       </div>
                       <div className="text-xs text-gray-500">
-                        Fee: ${(tx.fee || 0).toFixed(3)}
+                        Fee: {(tx.fee || 0).toFixed(6)} SOL
                       </div>
                     </div>
                   </div>

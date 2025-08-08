@@ -47,7 +47,7 @@ export default function SendForm({ formData, setFormData, currentUser }) {
       <CardContent className="space-y-6">
         {/* Amount Input */}
         <div className="space-y-2">
-          <Label htmlFor="amount">Amount (USDC)</Label>
+          <Label htmlFor="amount">Amount (SOL)</Label>
           <div className="relative">
             <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
@@ -120,16 +120,16 @@ export default function SendForm({ formData, setFormData, currentUser }) {
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Amount:</span>
-                <span>${parseFloat(formData.amount).toFixed(2)} USDC</span>
+                                 <span>{parseFloat(formData.amount).toFixed(4)} SOL</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Network Fee:</span>
-                <span className="text-green-600">${estimatedFee} USDC</span>
+                                 <span className="text-green-600">{estimatedFee} SOL</span>
               </div>
               <div className="border-t pt-1 mt-2">
                 <div className="flex justify-between font-medium">
                   <span>Total:</span>
-                  <span>${totalAmount} USDC</span>
+                                     <span>{totalAmount} SOL</span>
                 </div>
               </div>
             </div>
