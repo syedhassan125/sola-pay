@@ -5,6 +5,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 import SendForm from "../components/send/SendForm";
 import RecipientSearch from "../components/send/RecipientSearch";
@@ -15,7 +19,7 @@ export default function SendPage() {
   const [currentUser] = useState({
     id: 1,
     username: "you",
-    wallet_address: "fake_wallet_address",
+    wallet_address: "",
     total_sent: 200,
     transaction_count: 5,
     credit_used: 0,
@@ -23,6 +27,7 @@ export default function SendPage() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     recipient: null,
+    recipientAddress: "",
     amount: "",
     paymentMethod: "wallet",
     metadata: {
@@ -35,11 +40,21 @@ export default function SendPage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
+  const { connection } = useConnection();
+  const { publicKey, sendTransaction } = useWallet();
+
   const handleNext = () => {
     setError(null);
-    if (step === 1 && !formData.recipient) {
-      setError("Please select a recipient");
-      return;
+    if (step === 1) {
+      const hasRecipient = !!formData.recipient || !!formData.recipientAddress;
+      if (!hasRecipient) {
+        setError("Please select a recipient or enter a wallet address");
+        return;
+      }
+      if (formData.recipientAddress) {
+        try { new PublicKey(formData.recipientAddress.trim()); }
+        catch { setError("Invalid base58 Solana address"); return; }
+      }
     }
     if (step === 2 && (!formData.amount || parseFloat(formData.amount) <= 0)) {
       setError("Please enter a valid amount");
@@ -53,22 +68,80 @@ export default function SendPage() {
     setError(null);
   };
 
+  const resolveRecipientAddress = () => {
+    if (formData.recipientAddress) return formData.recipientAddress.trim();
+    return "";
+  };
+
   const handleSendMoney = async () => {
-    setIsLoading(true);
-    setError(null);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      setIsLoading(true);
+      setError(null);
+
+      if (!publicKey) {
+        throw new Error("Connect your wallet first");
+      }
+
+      const recipientAddressBase58 = resolveRecipientAddress();
+      try { new PublicKey(recipientAddressBase58); } catch { throw new Error("Invalid base58 Solana address"); }
+
+      const recipientPubkey = new PublicKey(recipientAddressBase58);
+      const lamports = Math.round(parseFloat(formData.amount) * LAMPORTS_PER_SOL);
+      if (!Number.isFinite(lamports) || lamports <= 0) {
+        throw new Error("Invalid amount");
+      }
+
+      const tx = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: recipientPubkey,
+          lamports,
+        })
+      );
+
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      tx.recentBlockhash = blockhash;
+      tx.feePayer = publicKey;
+
+      const signature = await sendTransaction(tx, connection);
+
+      await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+
+      const network = "devnet";
+      const fiatCurrency = import.meta.env.VITE_DEFAULT_FIAT || "GBP";
+
+      try {
+        await api.sendRecord({
+          signature,
+          from: publicKey.toBase58(),
+          to: recipientAddressBase58,
+          amountLamports: lamports,
+          network,
+          fiatCurrency,
+        });
+      } catch (e) {
+        console.warn("Failed to record transaction:", e?.message || e);
+      }
+
+      const explorerUrl = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+      toast.success(
+        "Payment sent successfully",
+        { description: `Signature: ${signature.slice(0,8)}...`, action: { label: "View", onClick: () => window.open(explorerUrl, "_blank") } }
+      );
+
       setSuccess(true);
     } catch (error) {
-      setError("Failed to send payment. Please try again.");
+      setError(error.message || "Failed to send payment. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const resetForm = () => {
     setStep(1);
     setFormData({
       recipient: null,
+      recipientAddress: "",
       amount: "",
       paymentMethod: "wallet",
       metadata: {
@@ -91,7 +164,7 @@ export default function SendPage() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Sent!</h2>
             <p className="text-gray-600 mb-6">
-              Your payment of ${formData.amount} to @{formData.recipient?.username} has been 
+              Your payment of {formData.amount} SOL to @{formData.recipient?.username || formData.recipientAddress} has been 
               {formData.paymentMethod === "pay_later" ? " scheduled" : " completed successfully"}.
             </p>
             <div className="flex gap-3 justify-center">
@@ -120,7 +193,7 @@ export default function SendPage() {
         </Link>
         <div>
           <h1 className="text-2xl md:text-3xl font-bold gradient-text">Send Money</h1>
-          <p className="text-gray-600">Send USDC globally with minimal fees</p>
+          <p className="text-gray-600">Send SOL globally with minimal fees</p>
         </div>
       </div>
 
@@ -155,8 +228,10 @@ export default function SendPage() {
       <div className="space-y-6">
         {step === 1 && (
           <RecipientSearch 
-            onRecipientSelect={(recipient) => setFormData({...formData, recipient})}
+            onRecipientSelect={(recipient) => setFormData({...formData, recipient, recipientAddress: formData.recipientAddress})}
             selectedRecipient={formData.recipient}
+            recipientAddress={formData.recipientAddress}
+            onRecipientAddressChange={(addr) => setFormData({...formData, recipientAddress: addr})}
           />
         )}
 

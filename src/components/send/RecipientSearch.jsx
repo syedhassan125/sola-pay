@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { User, Search, MapPin, Briefcase, CheckCircle } from "lucide-react";
+import { User, Search, MapPin, Briefcase, CheckCircle, Wallet } from "lucide-react";
 
-export default function RecipientSearch({ onRecipientSelect, selectedRecipient }) {
+export default function RecipientSearch({ onRecipientSelect, selectedRecipient, recipientAddress = "", onRecipientAddressChange }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [recentRecipients, setRecentRecipients] = useState([]);
@@ -122,6 +122,17 @@ export default function RecipientSearch({ onRecipientSelect, selectedRecipient }
           />
         </div>
 
+        {/* Manual wallet address input */}
+        <div className="relative">
+          <Wallet className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Or paste recipient Solana address (base58)"
+            value={recipientAddress}
+            onChange={(e) => onRecipientAddressChange?.(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
         {/* Search Results */}
         {searchTerm.length > 2 && (
           <div>
@@ -171,15 +182,18 @@ export default function RecipientSearch({ onRecipientSelect, selectedRecipient }
         )}
 
         {/* Selected Recipient Summary */}
-        {selectedRecipient && (
+        {(selectedRecipient || recipientAddress) && (
           <div className="bg-green-50 rounded-xl p-4 border border-green-200">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
               <span className="font-medium text-green-800">Recipient Selected</span>
             </div>
             <p className="text-green-700">
-              You're sending money to <strong>@{selectedRecipient.username}</strong>
-              {selectedRecipient.country && ` in ${selectedRecipient.country}`}
+              {selectedRecipient ? (
+                <>You're sending money to <strong>@{selectedRecipient.username}</strong>{selectedRecipient.country && ` in ${selectedRecipient.country}`}</>
+              ) : (
+                <>Wallet: <span className="font-mono">{recipientAddress}</span></>
+              )}
             </p>
           </div>
         )}

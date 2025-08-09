@@ -6,12 +6,12 @@ import React, { useMemo } from "react";
 
 const WalletContextProvider = ({ children }) => {
   const network = WalletAdapterNetwork.Devnet;
-  const endpoint = "https://api.devnet.solana.com";
+  const endpoint = import.meta.env.VITE_SOLANA_RPC_URL || "https://api.devnet.solana.com";
 
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (
-    <ConnectionProvider endpoint={endpoint}>
+    <ConnectionProvider endpoint={endpoint} config={{ commitment: "confirmed" }}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           {children}

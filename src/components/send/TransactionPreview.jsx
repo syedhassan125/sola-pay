@@ -46,16 +46,16 @@ export default function TransactionPreview({ formData, currentUser, onConfirm, i
           <div className="bg-gray-50 rounded-xl p-4 space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Send Amount:</span>
-              <span className="font-semibold text-xl">${parseFloat(formData.amount).toFixed(2)} USDC</span>
+                             <span className="font-semibold text-xl">{parseFloat(formData.amount).toFixed(4)} SOL</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Network Fee:</span>
-              <span className="text-green-600">${fee.toFixed(3)} USDC</span>
+                             <span className="text-green-600">{fee.toFixed(6)} SOL</span>
             </div>
             <div className="border-t pt-3">
               <div className="flex justify-between items-center">
                 <span className="font-medium">Total from wallet:</span>
-                <span className="font-bold text-lg">${total.toFixed(3)} USDC</span>
+                                 <span className="font-bold text-lg">{total.toFixed(6)} SOL</span>
               </div>
             </div>
           </div>
