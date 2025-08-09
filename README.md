@@ -11,51 +11,48 @@ Cross-border payments web app on Solana with a PayPal-like UX.
 - Frontend: `src/` (existing UI preserved)
 - Backend: `server/`
 
-## Quick Start
+## Run locally
 
-### Prereqs
-- Node 18+
-- Phantom Wallet (Devnet)
-- Postgres (Render or local)
-
-### 1) Environment
-Copy `.env.example` to `.env` and fill values as needed.
-
-```bash
-cp .env.example .env
-```
-
-- Frontend uses `VITE_API_URL` to talk to backend
-- Backend uses `DATABASE_URL` and `SOLANA_RPC_URL`
-
-### 2) Backend
+1) Backend
 ```bash
 cd server
 npm i
+cp ../.env.example .env
 npm run dev
 ```
-Server runs on http://localhost:4000. Tables are created automatically if `DATABASE_URL` is set.
+Expected: logs "listening on :4000" and `GET http://localhost:4000/health` returns `{ok:true}`.
 
-Endpoints:
-- POST `/auth/google` (stub)
-- POST `/wallet/send` (record a signed+submitted SOL transfer)
-- GET `/wallet/balance?publicKey=...`
-- GET `/transactions?publicKey=...`
-- POST `/kyc`
-
-### 3) Frontend
+2) Frontend
 ```bash
 cd ..
 npm i
+cp .env.example .env
+# ensure VITE_API_URL=http://localhost:4000
 npm run dev
 ```
-Open http://localhost:5173. Connect Phantom (Devnet), go to Send, enter a recipient wallet address, and an amount in SOL.
+Open `http://localhost:5173`.
 
-## Notes
-- Real SOL transfers use Phantom to sign and send. The backend records the transaction and provides balances with mocked fiat.
-- Existing components and styling were preserved; minor label changes reflect SOL.
-- QR Payments and Google OAuth are scaffolded; productionization required.
+3) Phantom & Devnet
+- Install Phantom, switch to Devnet.
+- Airdrop if needed:
+  - CLI: `solana airdrop 1 <YOUR_PUBLIC_KEY> --url https://api.devnet.solana.com`
+  - Or use Phantom’s Devnet faucet.
+
+## End-to-end test
+- Connect Phantom in sidebar.
+- Dashboard shows SOL balance and mocked fiat.
+- Send: paste a Devnet address (validate base58), send 0.001 SOL.
+- Success toast shows signature + link to Explorer (Devnet).
+- History shows your transaction after it’s recorded by the backend.
+
+## API
+- `GET /health` → `{ok:true}`
+- `GET /wallet/balance?pk=<pubkey>` → `{ lamports, sol, fiatValue, fiatCurrency }`
+- `POST /wallet/send` → `{ signature, from, to, amountLamports, network, fiatCurrency }`
+- `GET /transactions?publicKey=<pubkey>` → latest rows involving your key
+- `POST /kyc` → stores KYC payload
+- `POST /auth/google` → stub
 
 ## Deploy
-- Frontend (Vercel): set `VITE_API_URL` env to your Render backend URL.
-- Backend (Render): set `DATABASE_URL` (Render Postgres) and `SOLANA_RPC_URL`.
+- Frontend (Vercel): set `VITE_API_URL` to backend URL.
+- Backend (Render): set `DATABASE_URL`, `SOLANA_RPC_URL`, `DEFAULT_FIAT`.

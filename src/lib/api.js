@@ -6,7 +6,7 @@ async function request(path, options = {}) {
     "Content-Type": "application/json",
     ...(options.headers || {})
   };
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(url, { ...options, headers, credentials: "include" });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || `Request failed: ${res.status}`);
@@ -17,12 +17,12 @@ async function request(path, options = {}) {
 
 export const api = {
   getBalance: async (publicKeyBase58) => {
-    return request(`/wallet/balance?publicKey=${encodeURIComponent(publicKeyBase58)}`);
+    return request(`/wallet/balance?pk=${encodeURIComponent(publicKeyBase58)}`);
   },
-  sendRecord: async ({ senderPublicKey, recipientPublicKey, amountSol, signature, metadata }) => {
+  sendRecord: async ({ signature, from, to, amountLamports, network, fiatCurrency }) => {
     return request(`/wallet/send`, {
       method: "POST",
-      body: JSON.stringify({ senderPublicKey, recipientPublicKey, amountSol, signature, metadata })
+      body: JSON.stringify({ signature, from, to, amountLamports, network, fiatCurrency })
     });
   },
   getTransactions: async (publicKeyBase58) => {

@@ -43,8 +43,9 @@ export default function Dashboard() {
         const sol = bal / LAMPORTS_PER_SOL;
         setSolBalance(sol);
       });
-      // Fetch fiat mock from backend
-      api.getBalance(publicKey.toBase58()).then((res) => setFiatBalance(res.fiat)).catch(() => setFiatBalance(null));
+      api.getBalance(publicKey.toBase58())
+        .then((res) => setFiatBalance({ currency: res.fiatCurrency, amount: res.fiatValue }))
+        .catch(() => setFiatBalance(null));
     }
   }, [publicKey, connection]);
 

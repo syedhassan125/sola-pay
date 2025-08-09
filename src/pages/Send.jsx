@@ -8,6 +8,7 @@ import { createPageUrl } from "@/utils";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 import SendForm from "../components/send/SendForm";
 import RecipientSearch from "../components/send/RecipientSearch";
@@ -50,6 +51,10 @@ export default function SendPage() {
         setError("Please select a recipient or enter a wallet address");
         return;
       }
+      if (formData.recipientAddress) {
+        try { new PublicKey(formData.recipientAddress.trim()); }
+        catch { setError("Invalid base58 Solana address"); return; }
+      }
     }
     if (step === 2 && (!formData.amount || parseFloat(formData.amount) <= 0)) {
       setError("Please enter a valid amount");
@@ -64,10 +69,7 @@ export default function SendPage() {
   };
 
   const resolveRecipientAddress = () => {
-    // For MVP, use typed address or mock lookup from selected recipient
     if (formData.recipientAddress) return formData.recipientAddress.trim();
-    // If a user was selected from address book, you could map to their wallet here
-    // For now, require manual paste when not available
     return "";
   };
 
@@ -81,9 +83,7 @@ export default function SendPage() {
       }
 
       const recipientAddressBase58 = resolveRecipientAddress();
-      if (!recipientAddressBase58) {
-        throw new Error("Recipient wallet address is required");
-      }
+      try { new PublicKey(recipientAddressBase58); } catch { throw new Error("Invalid base58 Solana address"); }
 
       const recipientPubkey = new PublicKey(recipientAddressBase58);
       const lamports = Math.round(parseFloat(formData.amount) * LAMPORTS_PER_SOL);
@@ -107,19 +107,27 @@ export default function SendPage() {
 
       await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
 
-      // Record to backend (fire-and-forget acceptable for MVP)
+      const network = "devnet";
+      const fiatCurrency = import.meta.env.VITE_DEFAULT_FIAT || "GBP";
+
       try {
         await api.sendRecord({
-          senderPublicKey: publicKey.toBase58(),
-          recipientPublicKey: recipientAddressBase58,
-          amountSol: parseFloat(formData.amount),
           signature,
-          metadata: formData.metadata,
+          from: publicKey.toBase58(),
+          to: recipientAddressBase58,
+          amountLamports: lamports,
+          network,
+          fiatCurrency,
         });
       } catch (e) {
-        // Non-fatal for MVP
         console.warn("Failed to record transaction:", e?.message || e);
       }
+
+      const explorerUrl = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+      toast.success(
+        "Payment sent successfully",
+        { description: `Signature: ${signature.slice(0,8)}...`, action: { label: "View", onClick: () => window.open(explorerUrl, "_blank") } }
+      );
 
       setSuccess(true);
     } catch (error) {
@@ -156,7 +164,7 @@ export default function SendPage() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Sent!</h2>
             <p className="text-gray-600 mb-6">
-              Your payment of ${formData.amount} to @{formData.recipient?.username || formData.recipientAddress} has been 
+              Your payment of {formData.amount} SOL to @{formData.recipient?.username || formData.recipientAddress} has been 
               {formData.paymentMethod === "pay_later" ? " scheduled" : " completed successfully"}.
             </p>
             <div className="flex gap-3 justify-center">

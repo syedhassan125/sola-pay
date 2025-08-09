@@ -11,6 +11,8 @@ dotenv.config();
 
 const PORT = process.env.PORT || 4000;
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || clusterApiUrl("devnet");
+const DEFAULT_FIAT = process.env.DEFAULT_FIAT || "GBP";
+const MOCK_RATE_GBP_TO_PKR = Number(process.env.MOCK_RATE_GBP_TO_PKR || 360);
 const connection = new Connection(SOLANA_RPC_URL, "confirmed");
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -32,14 +34,16 @@ async function ensureTables() {
     );
     create table if not exists transactions (
       id serial primary key,
-      user_pubkey text not null,
-      recipient_pubkey text not null,
-      amount_sol numeric not null,
-      signature text,
-      status text default 'completed',
-      metadata jsonb,
+      signature text unique,
+      from_address text not null,
+      to_address text not null,
+      amount_lamports bigint not null,
+      network text default 'devnet',
+      fiat_currency text default '${DEFAULT_FIAT}',
       created_at timestamptz default now()
     );
+    create index if not exists idx_tx_created_at on transactions(created_at desc);
+    create index if not exists idx_tx_from_to on transactions(from_address, to_address);
     create table if not exists kyc (
       id serial primary key,
       user_pubkey text,
@@ -50,53 +54,65 @@ async function ensureTables() {
 }
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [/^http:\/\/localhost:5173$/, /vercel\.app$/],
+  credentials: true
+}));
 app.use(helmet());
 app.use(express.json());
 app.use(morgan("tiny"));
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-// GET /wallet/balance?publicKey=...
+// GET /wallet/balance?pk=...
 app.get("/wallet/balance", async (req, res) => {
   try {
-    const qp = z.object({ publicKey: z.string().min(30) }).parse(req.query);
-    const pubkey = new PublicKey(qp.publicKey);
+    const qp = z.object({ pk: z.string().min(30) }).parse(req.query);
+    const pubkey = new PublicKey(qp.pk);
     const lamports = await connection.getBalance(pubkey);
     const sol = lamports / 1_000_000_000;
-    // Mock fiat conversion
-    const rate = 150; // 1 SOL ≈ 150 USD (mock)
-    res.json({ sol, fiat: { currency: "USD", amount: sol * rate, rate } });
+
+    // Mock fiat: if DEFAULT_FIAT is GBP, compute GBP; if PKR, apply fake rate
+    let fiatCurrency = DEFAULT_FIAT;
+    let fiatValue = sol * 150; // Base mock to USD equivalent
+    if (fiatCurrency === "GBP") fiatValue = sol * 120;
+    if (fiatCurrency === "PKR") fiatValue = sol * 120 * MOCK_RATE_GBP_TO_PKR;
+
+    res.json({ lamports, sol, fiatValue, fiatCurrency });
   } catch (e) {
     res.status(400).send(e.message || "Invalid request");
   }
 });
 
-// POST /wallet/send (record a completed tx)
+// POST /wallet/send
 app.post("/wallet/send", async (req, res) => {
   try {
     const body = z.object({
-      senderPublicKey: z.string().min(30),
-      recipientPublicKey: z.string().min(30),
-      amountSol: z.number().positive(),
       signature: z.string().min(10),
-      metadata: z.any().optional(),
+      from: z.string().min(30),
+      to: z.string().min(30),
+      amountLamports: z.number().int().positive(),
+      network: z.string().default("devnet"),
+      fiatCurrency: z.string().default(DEFAULT_FIAT),
     }).parse(req.body);
 
-    // Optionally verify confirmation
+    // Verify signature exists on chain
     try {
-      const info = await connection.getSignatureStatus(body.signature);
-      if (!info?.value) {
-        console.warn("No signature status yet");
+      const status = await connection.getSignatureStatus(body.signature);
+      if (!status?.value) {
+        console.warn("Signature not found yet on chain", body.signature);
       }
     } catch {}
 
     if (pool) {
+      // ignore duplicates via unique(signature)
       await pool.query(
-        `insert into transactions (user_pubkey, recipient_pubkey, amount_sol, signature, status, metadata) values ($1,$2,$3,$4,$5,$6)`,
-        [body.senderPublicKey, body.recipientPublicKey, body.amountSol, body.signature, "completed", body.metadata || null]
+        `insert into transactions (signature, from_address, to_address, amount_lamports, network, fiat_currency)
+         values ($1,$2,$3,$4,$5,$6) on conflict (signature) do nothing`,
+        [body.signature, body.from, body.to, body.amountLamports, body.network, body.fiatCurrency]
       );
     }
+
     res.status(201).json({ ok: true });
   } catch (e) {
     res.status(400).send(e.message || "Invalid request");
@@ -107,19 +123,17 @@ app.post("/wallet/send", async (req, res) => {
 app.get("/transactions", async (req, res) => {
   try {
     if (!pool) return res.json([]);
-    const qp = z.object({ publicKey: z.string().min(30).optional() }).parse(req.query);
-    let result;
-    if (qp.publicKey) {
-      result = await pool.query(
-        `select * from transactions where user_pubkey = $1 or recipient_pubkey = $1 order by created_at desc limit 100`,
-        [qp.publicKey]
-      );
-    } else {
-      result = await pool.query(`select * from transactions order by created_at desc limit 100`);
-    }
+    const qp = z.object({ publicKey: z.string().min(30) }).parse(req.query);
+    const result = await pool.query(
+      `select signature, from_address, to_address, amount_lamports, network, fiat_currency, created_at
+       from transactions
+       where from_address = $1 or to_address = $1
+       order by created_at desc limit 200`,
+      [qp.publicKey]
+    );
     res.json(result.rows);
   } catch (e) {
-    res.status(500).send("Failed to fetch transactions");
+    res.status(400).send(e.message || "Invalid request");
   }
 });
 
@@ -139,7 +153,7 @@ app.post("/kyc", async (req, res) => {
   }
 });
 
-// Placeholder for Google auth (requires OAuth credentials)
+// Placeholder for Google auth
 app.post("/auth/google", (_req, res) => {
   res.status(501).json({ error: "Google OAuth not configured. Set GOOGLE_CLIENT_ID/SECRET and implement callback." });
 });
@@ -148,5 +162,5 @@ app.listen(PORT, async () => {
   if (pool) {
     try { await ensureTables(); } catch (e) { console.error("DB init failed", e); }
   }
-  console.log(`SolaPay server running on :${PORT}`);
+  console.log(`listening on :${PORT}`);
 });
